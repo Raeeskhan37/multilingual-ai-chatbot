@@ -34,11 +34,10 @@ if st.button("Ask AI") and message:
 
             st.write(response.text)
             break
+            except Exception as e:
+    if attempt < 2:
+        time.sleep(2)
+    else:
+        st.error(f"Gemini error: {e}")
 
-        except Exception:
-            if attempt < 2:
-                time.sleep(2)
-            else:
-                st.error(
-                    "Gemini is temporarily unavailable. Please try again."
-                )
+        
