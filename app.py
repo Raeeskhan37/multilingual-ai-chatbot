@@ -15,6 +15,14 @@ language = st.selectbox(
     ["English", "Urdu", "Pashto", "Arabic", "French", "Spanish", "Chinese"]
 )
 
+# 🎤 Voice input
+st.subheader("🎤 Voice Input")
+audio = st.audio_input("Record your message")
+
+if audio:
+    st.audio(audio)
+
+# Ask AI
 if st.button("Ask AI") and message:
 
     prompt = f"""
@@ -35,8 +43,11 @@ if st.button("Ask AI") and message:
             st.write(response.text)
             break
 
-        except Exception as e:
+        except Exception:
             if attempt < 2:
                 time.sleep(2)
             else:
-                st.error("Gemini is temporarily unavailable. Please try again.")
+                st.error(
+                    "Gemini is temporarily unavailable. "
+                    "Please try again."
+                )
