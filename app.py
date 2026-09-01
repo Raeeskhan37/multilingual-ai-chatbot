@@ -44,8 +44,21 @@ if st.button("Ask AI"):
                 if audio:
 
                     # Upload recorded audio to Gemini
-                    audio_file = client.files.upload(
-                        file=audio
+                    audio_bytes = audio.getvalue()
+
+with open("/tmp/voice.wav", "wb") as f:
+    f.write(audio_bytes)
+
+audio_file = client.files.upload(
+    file="/tmp/voice.wav"
+)
+response = client.models.generate_content(
+    model="gemini-3.6-flash",
+    contents=[
+        audio_file,
+        prompt
+    ]
+)
                     )
 
                     response = client.models.generate_content(
