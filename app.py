@@ -15,7 +15,7 @@ language = st.selectbox(
     ["English", "Urdu", "Pashto", "Arabic", "French", "Spanish", "Chinese"]
 )
 
-st.subheader("🎤 Or speak your message")
+st.subheader("🎤 Voice Input")
 audio = st.audio_input("Record your message")
 
 if audio:
@@ -29,62 +29,49 @@ if st.button("Ask AI"):
     else:
 
         prompt = f"""
-        Understand the user's message regardless of its language.
+Understand the user's message regardless of the language.
 
-        Respond naturally in {language}.
+Respond naturally in {language}.
 
-        If the user provides audio, first understand what the
-        user said and then respond in the selected language.
-        """
+If the user provides audio, understand what the user said
+and respond in the selected language.
+"""
 
         for attempt in range(3):
 
             try:
 
                 if audio:
-
-                    # Upload recorded audio to Gemini
                     audio_bytes = audio.getvalue()
 
-with open("/tmp/voice.wav", "wb") as f:
-    f.write(audio_bytes)
+                    with open("/tmp/voice.wav", "wb") as f:
+                        f.write(audio_bytes)
 
-audio_file = client.files.upload(
-    file="/tmp/voice.wav"
-)
-response = client.models.generate_content(
-    model="gemini-3.6-flash",
-    contents=[
-        audio_file,
-        prompt
-    ]
-)
+                    audio_file = client.files.upload(
+                        file="/tmp/voice.wav"
                     )
 
                     response = client.models.generate_content(
                         model="gemini-3.6-flash",
                         contents=[
-                            audio_file,
-                            prompt
+                            prompt,
+                            audio_file
                         ]
                     )
 
                 else:
-
-                    # Existing working text path
                     response = client.models.generate_content(
                         model="gemini-3.6-flash",
                         contents=f"""
-                        {prompt}
+{prompt}
 
-                        User message:
-                        {message}
-                        """
+User message:
+{message}
+"""
                     )
 
                 st.success("AI Response")
                 st.write(response.text)
-
                 break
 
             except Exception as e:
@@ -94,6 +81,5 @@ response = client.models.generate_content(
 
                 else:
                     st.error(
-                        "Gemini is temporarily unavailable. "
-                        "Please try again."
+                        "Gemini is temporarily unavailable."
                     )
