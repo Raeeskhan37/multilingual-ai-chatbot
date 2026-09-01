@@ -15,71 +15,30 @@ language = st.selectbox(
     ["English", "Urdu", "Pashto", "Arabic", "French", "Spanish", "Chinese"]
 )
 
-st.subheader("🎤 Voice Input")
-audio = st.audio_input("Record your message")
+if st.button("Ask AI") and message:
 
-if audio:
-    st.audio(audio)
+    prompt = f"""
+    Understand the user's message regardless of its input language.
+    Respond naturally in {language}.
 
-if st.button("Ask AI"):
+    User message:
+    {message}
+    """
 
-    if not message and not audio:
-        st.warning("Please type a message or record your voice.")
+    for attempt in range(3):
+        try:
+            response = client.models.generate_content(
+                model="gemini-3.6-flash",
+                contents=prompt
+            )
 
-    else:
+            st.write(response.text)
+            break
 
-        prompt = f"""
-Understand the user's message regardless of the language.
-
-Respond naturally in {language}.
-
-If the user provides audio, understand what the user said
-and respond in the selected language.
-"""
-
-        for attempt in range(3):
-
-            try:
-
-                if audio:
-                    audio_bytes = audio.getvalue()
-
-                    with open("/tmp/voice.wav", "wb") as f:
-                        f.write(audio_bytes)
-
-                    audio_file = client.files.upload(
-                        file="/tmp/voice.wav"
-                    )
-
-                    response = client.models.generate_content(
-                        model="gemini-3.6-flash",
-                        contents=[
-                            prompt,
-                            audio_file
-                        ]
-                    )
-
-                else:
-                    response = client.models.generate_content(
-                        model="gemini-3.6-flash",
-                        contents=f"""
-{prompt}
-
-User message:
-{message}
-"""
-                    )
-
-                st.success("AI Response")
-                st.write(response.text)
-                break
-
-            except Exception as e:
-
-                if attempt < 2:
-                    time.sleep(2)
-
-                else:
-                    st.error(
-                        "Gemini is temporarily unavailable."
-                    )
+        except Exception:
+            if attempt < 2:
+                time.sleep(2)
+            else:
+                st.error(
+                    "Gemini is temporarily unavailable. Please try again."
+                )
