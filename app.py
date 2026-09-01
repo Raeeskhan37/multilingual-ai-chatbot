@@ -18,12 +18,12 @@ language = st.selectbox(
 if st.button("Ask AI") and message:
 
     prompt = f"""
-    Understand the user's message regardless of its input language.
-    Respond naturally in {language}.
+Understand the user's message regardless of its input language.
+Respond naturally in {language}.
 
-    User message:
-    {message}
-    """
+User message:
+{message}
+"""
 
     for attempt in range(3):
         try:
@@ -34,10 +34,9 @@ if st.button("Ask AI") and message:
 
             st.write(response.text)
             break
-            except Exception as e:
-    if attempt < 2:
-        time.sleep(2)
-    else:
-        st.error(f"Gemini error: {e}")
 
-        
+        except Exception as e:
+            if attempt < 2:
+                time.sleep(2)
+            else:
+                st.error(f"Gemini error: {e}")
