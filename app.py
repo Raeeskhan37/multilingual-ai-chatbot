@@ -15,39 +15,72 @@ language = st.selectbox(
     ["English", "Urdu", "Pashto", "Arabic", "French", "Spanish", "Chinese"]
 )
 
-# 🎤 Voice input
-st.subheader("🎤 Voice Input")
+st.subheader("🎤 Or speak your message")
 audio = st.audio_input("Record your message")
 
 if audio:
     st.audio(audio)
 
-# Ask AI
-if st.button("Ask AI") and message:
+if st.button("Ask AI"):
 
-    prompt = f"""
-    Understand the user's message regardless of its input language.
-    Respond naturally in {language}.
+    if not message and not audio:
+        st.warning("Please type a message or record your voice.")
 
-    User message:
-    {message}
-    """
+    else:
 
-    for attempt in range(3):
-        try:
-            response = client.models.generate_content(
-                model="gemini-3.6-flash",
-                contents=prompt
-            )
+        prompt = f"""
+        Understand the user's message regardless of its language.
 
-            st.write(response.text)
-            break
+        Respond naturally in {language}.
 
-        except Exception:
-            if attempt < 2:
-                time.sleep(2)
-            else:
-                st.error(
-                    "Gemini is temporarily unavailable. "
-                    "Please try again."
-                )
+        If the user provides audio, first understand what the
+        user said and then respond in the selected language.
+        """
+
+        for attempt in range(3):
+
+            try:
+
+                if audio:
+
+                    # Upload recorded audio to Gemini
+                    audio_file = client.files.upload(
+                        file=audio
+                    )
+
+                    response = client.models.generate_content(
+                        model="gemini-3.6-flash",
+                        contents=[
+                            audio_file,
+                            prompt
+                        ]
+                    )
+
+                else:
+
+                    # Existing working text path
+                    response = client.models.generate_content(
+                        model="gemini-3.6-flash",
+                        contents=f"""
+                        {prompt}
+
+                        User message:
+                        {message}
+                        """
+                    )
+
+                st.success("AI Response")
+                st.write(response.text)
+
+                break
+
+            except Exception as e:
+
+                if attempt < 2:
+                    time.sleep(2)
+
+                else:
+                    st.error(
+                        "Gemini is temporarily unavailable. "
+                        "Please try again."
+                    )
