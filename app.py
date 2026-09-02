@@ -292,7 +292,7 @@ Do not claim to see something that is not actually visible.
 """
 
     response = client.models.generate_content(
-        model="gemini-2.5-flash",
+        model="gemini-3.6-flash",
         contents=[
             image_part,
             prompt
