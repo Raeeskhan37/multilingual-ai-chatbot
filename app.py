@@ -124,14 +124,33 @@ def generate_voice(text, language):
 # Ask Gemini
 # -----------------------------
 
+import time
+
+
 def ask_gemini(contents):
 
-    response = client.models.generate_content(
-        model="gemini-3.6-flash",
-        contents=contents
-    )
+    for attempt in range(3):
 
-    return response.text
+        try:
+
+            response = client.models.generate_content(
+                model="gemini-3.6-flash",
+                contents=contents
+            )
+
+            return response.text
+
+        except Exception as e:
+
+            error_message = str(e)
+
+            if "503" in error_message or "UNAVAILABLE" in error_message:
+
+                if attempt < 2:
+                    time.sleep(2)
+                    continue
+
+            raise e
 
 
 # -----------------------------
