@@ -84,7 +84,6 @@ audio = st.audio_input("🎤 Or record your message")
 tts_languages = {
     "English": "en",
     "Urdu": "ur",
-    "Pashto": "ps",
     "Arabic": "ar",
     "French": "fr",
     "Spanish": "es",
