@@ -269,7 +269,13 @@ Do not add explanations.
             ]
         )
 
-        user_text = transcription_response.text.strip()
+        user_text = transcription_response.text
+
+if not user_text:
+    st.error("❌ Speech was received, but no text was returned by the transcription model.")
+    st.stop()
+
+user_text = user_text.strip()
 
         # Show the transcribed message
         st.session_state.messages.append(
