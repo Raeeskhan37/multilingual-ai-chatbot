@@ -6,32 +6,25 @@ from google import genai
 from gtts import gTTS
 
 
-# -----------------------------------
-# Gemini API
-# -----------------------------------
+st.set_page_config(
+    page_title="Multilingual AI Chatbot",
+    page_icon="🌍"
+)
+
+st.title("🌍 Multilingual AI Chatbot")
+st.caption("Chat with AI using text or voice in multiple languages.")
+
 
 api_key = os.environ["GEMINI_API_KEY"]
 client = genai.Client(api_key=api_key)
 
 
-# -----------------------------------
-# App Title
-# -----------------------------------
-
-st.title("🌍 Multilingual AI Chatbot")
-
-
-# -----------------------------------
-# User Inputs
-# -----------------------------------
-
-message = st.text_area("Enter your message")
-
-audio = st.audio_input("🎤 Record your message")
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 
 
 language = st.selectbox(
-    "Select response language",
+    "🌍 Select response language",
     [
         "English",
         "Urdu",
@@ -44,9 +37,16 @@ language = st.selectbox(
 )
 
 
-# -----------------------------------
-# gTTS Language Codes
-# -----------------------------------
+for msg in st.session_state.messages:
+    with st.chat_message(msg["role"]):
+        st.write(msg["content"])
+
+
+message = st.chat_input("Type your message...")
+
+
+audio = st.audio_input("🎤 Or record your message")
+
 
 tts_languages = {
     "English": "en",
@@ -59,16 +59,9 @@ tts_languages = {
 }
 
 
-# -----------------------------------
-# Generate Voice
-# -----------------------------------
-
 def generate_voice(text, language):
 
-    language_code = tts_languages.get(
-        language,
-        "en"
-    )
+    language_code = tts_languages.get(language, "en")
 
     temp_file = tempfile.NamedTemporaryFile(
         delete=False,
@@ -88,158 +81,86 @@ def generate_voice(text, language):
     return temp_file.name
 
 
-# -----------------------------------
-# Ask AI
-# -----------------------------------
+def ask_gemini(contents):
 
-if st.button("Ask AI"):
+    response = client.models.generate_content(
+        model="gemini-3.6-flash",
+        contents=contents
+    )
 
-    # =================================
-    # TEXT INPUT
-    # =================================
-
-    if message:
-
-        prompt = f"""
-Understand the user's message regardless
-of the language used.
-
-Answer naturally, clearly, and accurately
-in {language}.
-
-User message:
-{message}
-"""
-
-        try:
-
-            response = client.models.generate_content(
-                model="gemini-3.6-flash",
-                contents=prompt
-            )
-
-            answer = response.text
-
-            # Display text answer
-            st.write(answer)
-
-            # Generate voice
-            st.markdown("### 🔊 Voice Output")
-
-            try:
-
-                audio_file = generate_voice(
-                    answer,
-                    language
-                )
-
-                with open(audio_file, "rb") as f:
-                    audio_bytes = f.read()
-
-                st.audio(
-                    audio_bytes,
-                    format="audio/mp3"
-                )
-
-            except Exception as voice_error:
-
-                st.error(
-                    f"Voice generation error: {voice_error}"
-                )
+    return response.text
 
 
-        except Exception as e:
+if message:
 
-            st.error(
-                f"Gemini error: {e}"
-            )
+    st.session_state.messages.append(
+        {
+            "role": "user",
+            "content": message
+        }
+    )
 
-
-    # =================================
-    # VOICE INPUT
-    # =================================
-
-    elif audio:
-
-        try:
-
-            audio_path = "/tmp/voice.wav"
-
-            # Save recorded audio
-            with open(audio_path, "wb") as f:
-
-                f.write(audio.getvalue())
+    with st.chat_message("user"):
+        st.write(message)
 
 
-            # Upload audio to Gemini
-            uploaded_audio = client.files.upload(
-                file=audio_path
-            )
+    conversation = ""
 
-
-            prompt = f"""
-Listen carefully to the user's voice message.
-
-Understand what the user is saying regardless
-of the language used.
-
-Respond naturally, clearly, and accurately
-in {language}.
-"""
-
-
-            response = client.models.generate_content(
-                model="gemini-3.6-flash",
-                contents=[
-                    prompt,
-                    uploaded_audio
-                ]
-            )
-
-
-            answer = response.text
-
-            # Display text answer
-            st.write(answer)
-
-            # Generate voice
-            st.markdown("### 🔊 Voice Output")
-
-            try:
-
-                audio_file = generate_voice(
-                    answer,
-                    language
-                )
-
-                with open(audio_file, "rb") as f:
-                    audio_bytes = f.read()
-
-                st.audio(
-                    audio_bytes,
-                    format="audio/mp3"
-                )
-
-            except Exception as voice_error:
-
-                st.error(
-                    f"Voice generation error: {voice_error}"
-                )
-
-
-        except Exception as e:
-
-            st.error(
-                f"Voice/Gemini error: {e}"
-            )
-
-
-    # =================================
-    # NO INPUT
-    # =================================
-
-    else:
-
-        st.warning(
-            "Please type a message or record your voice."
+    for msg in st.session_state.messages:
+        conversation += (
+            f'{msg["role"]}: {msg["content"]}\n'
         )
+
+
+    prompt = f"""
+You are a helpful multilingual AI assistant.
+
+Respond naturally, clearly, and accurately in {language}.
+
+Use the conversation history to understand
+the user's current question.
+
+Conversation:
+{conversation}
+
+Answer the user's latest message.
+"""
+
+
+    try:
+
+        answer = ask_gemini(prompt)
+
+        st.session_state.messages.append(
+            {
+                "role": "assistant",
+                "content": answer
+            }
+        )
+
+        with st.chat_message("assistant"):
+
+            st.write(answer)
+
+            st.markdown("🔊 **Voice Output**")
+
+            try:
+
+                audio_file = generate_voice(
+                    answer,
+                    language
+                )
+
+                with open(audio_file, "rb") as f:
+                    audio_bytes = f.read()
+
+                st.audio(
+                    audio_bytes,
+                    format="audio/mp3"
+                )
+
+            except Exception as voice_error:
+
+                st.warning(
+                    f"Voice output unavailable: {voice_error}"
+                )
