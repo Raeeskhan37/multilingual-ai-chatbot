@@ -235,7 +235,6 @@ Answer the user's latest message.
             f"Gemini error: {e}"
         )
 
-
 # -----------------------------
 # VOICE MESSAGE
 # -----------------------------
@@ -253,29 +252,58 @@ if audio:
             file=audio_path
         )
 
-        with st.chat_message("user"):
-            st.write("🎤 Voice message")
+        # Transcribe the user's voice
+        transcription_prompt = """
+Transcribe this voice message exactly.
 
-        prompt = f"""
-Listen carefully to the user's voice message.
-
-Understand what the user is saying,
-regardless of the language used.
-
-Use the previous conversation context if useful.
-
-Respond naturally, clearly, and accurately in {language}.
-
-Previous conversation:
-{st.session_state.messages}
+Return only the spoken words.
+Do not translate them.
+Do not add explanations.
 """
 
-        answer = ask_gemini(
-            [
-                prompt,
+        transcription_response = client.models.generate_content(
+            model="gemini-3.5-transcribe",
+            contents=[
+                transcription_prompt,
                 uploaded_audio
             ]
         )
+
+        user_text = transcription_response.text.strip()
+
+        # Show the transcribed message
+        st.session_state.messages.append(
+            {
+                "role": "user",
+                "content": user_text
+            }
+        )
+
+        with st.chat_message("user"):
+            st.write(f"🎤 {user_text}")
+
+        # Build conversation history
+        conversation = ""
+
+        for msg in st.session_state.messages:
+
+            conversation += (
+                f'{msg["role"]}: {msg["content"]}\n'
+            )
+
+        # Ask Gemini to answer
+        prompt = f"""
+You are a helpful multilingual AI assistant.
+
+Respond naturally, clearly, and accurately in {language}.
+
+Conversation history:
+{conversation}
+
+Answer the user's latest message.
+"""
+
+        answer = ask_gemini(prompt)
 
         st.session_state.messages.append(
             {
@@ -314,5 +342,5 @@ Previous conversation:
     except Exception as e:
 
         st.error(
-            f"Voice/Gemini error: {e}"
+            f"Voice transcription/Gemini error: {e}"
         )
