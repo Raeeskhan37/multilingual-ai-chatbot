@@ -1,132 +1,169 @@
 import os
-import wave
 import streamlit as st
+import streamlit.components.v1 as components
 from google import genai
-from google.genai import types
 
+# Get Gemini API key from Streamlit Secrets
 api_key = os.environ["GEMINI_API_KEY"]
+
+# Create Gemini client
 client = genai.Client(api_key=api_key)
 
+# App title
 st.title("🌍 Multilingual AI Chatbot")
 
+# Text input
 message = st.text_area("Enter your message")
 
+# Voice input
 audio = st.audio_input("🎤 Record your message")
 
+# Response language
 language = st.selectbox(
     "Select response language",
-    ["English", "Urdu", "Pashto", "Arabic", "French", "Spanish", "Chinese"]
+    [
+        "English",
+        "Urdu",
+        "Pashto",
+        "Arabic",
+        "French",
+        "Spanish",
+        "Chinese"
+    ]
 )
 
 
-def save_wav(filename, pcm_data):
-    with wave.open(filename, "wb") as wf:
-        wf.setnchannels(1)
-        wf.setsampwidth(2)
-        wf.setframerate(24000)
-        wf.writeframes(pcm_data)
+# Browser/device voice output
+def speak_text(text, language):
+
+    language_codes = {
+        "English": "en-US",
+        "Urdu": "ur-PK",
+        "Pashto": "ps-PK",
+        "Arabic": "ar-SA",
+        "French": "fr-FR",
+        "Spanish": "es-ES",
+        "Chinese": "zh-CN"
+    }
+
+    lang_code = language_codes.get(language, "en-US")
+
+    # Make text safe for JavaScript
+    safe_text = (
+        text
+        .replace("\\", "\\\\")
+        .replace("`", "\\`")
+        .replace("${", "\\${")
+    )
+
+    components.html(
+        f"""
+        <script>
+            const text = `{safe_text}`;
+
+            const speech = new SpeechSynthesisUtterance(text);
+
+            speech.lang = "{lang_code}";
+            speech.rate = 0.9;
+            speech.pitch = 1.0;
+
+            window.speechSynthesis.cancel();
+            window.speechSynthesis.speak(speech);
+        </script>
+        """,
+        height=0
+    )
 
 
+# Ask AI button
 if st.button("Ask AI"):
 
+    # -----------------------------
     # TEXT INPUT
+    # -----------------------------
     if message:
 
         prompt = f"""
-Understand the user's message regardless of its input language.
-Respond naturally in {language}.
+Understand the user's message regardless of the language used.
+
+Answer naturally and clearly in {language}.
 
 User message:
 {message}
 """
 
         try:
+
             response = client.models.generate_content(
                 model="gemini-3.6-flash",
                 contents=prompt
             )
 
             answer = response.text
+
             st.write(answer)
 
-            # Generate voice
-            tts_response = client.models.generate_content(
-                model="gemini-3.1-flash-tts-preview",
-                contents=f"Say naturally in {language}: {answer}",
-                config=types.GenerateContentConfig(
-                    response_modalities=["AUDIO"],
-                    speech_config=types.SpeechConfig(
-                        voice_config=types.VoiceConfig(
-                            prebuilt_voice_config=types.PrebuiltVoiceConfig(
-                                voice_name="Kore"
-                            )
-                        )
-                    )
-                )
-            )
+            st.markdown("🔊 **Voice Output**")
 
-            audio_data = tts_response.candidates[0].content.parts[0].inline_data.data
-
-            audio_file = "/tmp/response.wav"
-            save_wav(audio_file, audio_data)
-
-            st.audio(audio_file, format="audio/wav")
+            speak_text(answer, language)
 
         except Exception as e:
+
             st.error(f"Gemini error: {e}")
 
+
+    # -----------------------------
     # VOICE INPUT
+    # -----------------------------
     elif audio:
 
         try:
+
             audio_path = "/tmp/voice.wav"
 
+            # Save recorded audio
             with open(audio_path, "wb") as f:
                 f.write(audio.getvalue())
 
-            uploaded_audio = client.files.upload(file=audio_path)
+            # Upload audio to Gemini
+            uploaded_audio = client.files.upload(
+                file=audio_path
+            )
 
             prompt = f"""
 Listen to the user's voice message.
-Understand what the user is saying.
-Respond naturally in {language}.
 
-If the voice message is in any language, understand it and answer in the selected language.
+Understand what the user is saying, regardless of the language.
+
+Respond naturally and clearly in {language}.
 """
 
             response = client.models.generate_content(
                 model="gemini-3.6-flash",
-                contents=[prompt, uploaded_audio]
+                contents=[
+                    prompt,
+                    uploaded_audio
+                ]
             )
 
             answer = response.text
+
             st.write(answer)
 
-            # Generate voice
-            tts_response = client.models.generate_content(
-                model="gemini-3.1-flash-tts-preview",
-                contents=f"Say naturally in {language}: {answer}",
-                config=types.GenerateContentConfig(
-                    response_modalities=["AUDIO"],
-                    speech_config=types.SpeechConfig(
-                        voice_config=types.VoiceConfig(
-                            prebuilt_voice_config=types.PrebuiltVoiceConfig(
-                                voice_name="Kore"
-                            )
-                        )
-                    )
-                )
-            )
+            st.markdown("🔊 **Voice Output**")
 
-            audio_data = tts_response.candidates[0].content.parts[0].inline_data.data
-
-            audio_file = "/tmp/response.wav"
-            save_wav(audio_file, audio_data)
-
-            st.audio(audio_file, format="audio/wav")
+            speak_text(answer, language)
 
         except Exception as e:
+
             st.error(f"Voice/Gemini error: {e}")
 
+
+    # -----------------------------
+    # NO INPUT
+    # -----------------------------
     else:
-        st.warning("Please type a message or record your voice.")
+
+        st.warning(
+            "Please type a message or record your voice."
+        )
