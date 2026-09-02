@@ -1,6 +1,8 @@
 import os
+import wave
 import streamlit as st
 from google import genai
+from google.genai import types
 
 api_key = os.environ["GEMINI_API_KEY"]
 client = genai.Client(api_key=api_key)
@@ -15,6 +17,15 @@ language = st.selectbox(
     "Select response language",
     ["English", "Urdu", "Pashto", "Arabic", "French", "Spanish", "Chinese"]
 )
+
+
+def save_wav(filename, pcm_data):
+    with wave.open(filename, "wb") as wf:
+        wf.setnchannels(1)
+        wf.setsampwidth(2)
+        wf.setframerate(24000)
+        wf.writeframes(pcm_data)
+
 
 if st.button("Ask AI"):
 
@@ -35,7 +46,31 @@ User message:
                 contents=prompt
             )
 
-            st.write(response.text)
+            answer = response.text
+            st.write(answer)
+
+            # Generate voice
+            tts_response = client.models.generate_content(
+                model="gemini-3.1-flash-tts-preview",
+                contents=f"Say naturally in {language}: {answer}",
+                config=types.GenerateContentConfig(
+                    response_modalities=["AUDIO"],
+                    speech_config=types.SpeechConfig(
+                        voice_config=types.VoiceConfig(
+                            prebuilt_voice_config=types.PrebuiltVoiceConfig(
+                                voice_name="Kore"
+                            )
+                        )
+                    )
+                )
+            )
+
+            audio_data = tts_response.candidates[0].content.parts[0].inline_data.data
+
+            audio_file = "/tmp/response.wav"
+            save_wav(audio_file, audio_data)
+
+            st.audio(audio_file, format="audio/wav")
 
         except Exception as e:
             st.error(f"Gemini error: {e}")
@@ -64,7 +99,31 @@ If the voice message is in any language, understand it and answer in the selecte
                 contents=[prompt, uploaded_audio]
             )
 
-            st.write(response.text)
+            answer = response.text
+            st.write(answer)
+
+            # Generate voice
+            tts_response = client.models.generate_content(
+                model="gemini-3.1-flash-tts-preview",
+                contents=f"Say naturally in {language}: {answer}",
+                config=types.GenerateContentConfig(
+                    response_modalities=["AUDIO"],
+                    speech_config=types.SpeechConfig(
+                        voice_config=types.VoiceConfig(
+                            prebuilt_voice_config=types.PrebuiltVoiceConfig(
+                                voice_name="Kore"
+                            )
+                        )
+                    )
+                )
+            )
+
+            audio_data = tts_response.candidates[0].content.parts[0].inline_data.data
+
+            audio_file = "/tmp/response.wav"
+            save_wav(audio_file, audio_data)
+
+            st.audio(audio_file, format="audio/wav")
 
         except Exception as e:
             st.error(f"Voice/Gemini error: {e}")
