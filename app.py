@@ -7,21 +7,21 @@ from google import genai
 from gtts import gTTS
 
 
-# =========================================================
+# --------------------------------------------------
 # PAGE CONFIGURATION
-# =========================================================
+# --------------------------------------------------
 
 st.set_page_config(
-    page_title="Multilingual AI Chatbot",
+    page_title="Multilingual AI Chatbot by R@ees Khan",
     page_icon="🌍",
     layout="centered",
     initial_sidebar_state="expanded"
 )
 
 
-# =========================================================
-# CUSTOM CSS
-# =========================================================
+# --------------------------------------------------
+# CUSTOM STYLING
+# --------------------------------------------------
 
 st.markdown(
     """
@@ -29,30 +29,31 @@ st.markdown(
 
     .main-title {
         text-align: center;
-        font-size: 2.2rem;
-        font-weight: 700;
-        margin-bottom: 0.2rem;
+        font-size: 2.25rem;
+        font-weight: 750;
+        margin-top: 0.5rem;
+        margin-bottom: 0.1rem;
+        letter-spacing: -0.5px;
+    }
+
+    .developer-name {
+        text-align: center;
+        font-size: 1.15rem;
+        font-weight: 600;
+        margin-bottom: 0.15rem;
     }
 
     .subtitle {
         text-align: center;
         color: #777;
+        font-size: 0.95rem;
         margin-bottom: 1.5rem;
     }
 
-    .about-card {
-        padding: 18px;
-        border-radius: 12px;
-        border: 1px solid rgba(128,128,128,0.25);
-        margin-top: 10px;
-        margin-bottom: 10px;
-    }
-
-    .feature-card {
-        padding: 12px;
-        border-radius: 10px;
-        border: 1px solid rgba(128,128,128,0.20);
-        margin-bottom: 8px;
+    .section-title {
+        font-size: 1.1rem;
+        font-weight: 650;
+        margin-top: 0.5rem;
     }
 
     </style>
@@ -61,9 +62,9 @@ st.markdown(
 )
 
 
-# =========================================================
-# HEADER
-# =========================================================
+# --------------------------------------------------
+# MAIN HEADER
+# --------------------------------------------------
 
 st.markdown(
     '<div class="main-title">🌍 Multilingual AI Chatbot</div>',
@@ -71,27 +72,30 @@ st.markdown(
 )
 
 st.markdown(
+    '<div class="developer-name">by R@ees Khan</div>',
+    unsafe_allow_html=True
+)
+
+st.markdown(
     '<div class="subtitle">'
-    'Chat naturally using text or voice in multiple languages.'
+    'Chat naturally using text, voice, or images in multiple languages.'
     '</div>',
     unsafe_allow_html=True
 )
 
 
-# =========================================================
+# --------------------------------------------------
 # GEMINI CLIENT
-# =========================================================
+# --------------------------------------------------
 
 api_key = os.environ["GEMINI_API_KEY"]
 
-client = genai.Client(
-    api_key=api_key
-)
+client = genai.Client(api_key=api_key)
 
 
-# =========================================================
+# --------------------------------------------------
 # SESSION STATE
-# =========================================================
+# --------------------------------------------------
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
@@ -99,10 +103,13 @@ if "messages" not in st.session_state:
 if "processed_audio" not in st.session_state:
     st.session_state.processed_audio = None
 
+if "uploaded_image_hash" not in st.session_state:
+    st.session_state.uploaded_image_hash = None
 
-# =========================================================
+
+# --------------------------------------------------
 # SIDEBAR
-# =========================================================
+# --------------------------------------------------
 
 with st.sidebar:
 
@@ -123,10 +130,6 @@ with st.sidebar:
 
     st.divider()
 
-    # -----------------------------------------------------
-    # CLEAR CHAT
-    # -----------------------------------------------------
-
     if st.button(
         "🧹 Clear Conversation",
         use_container_width=True
@@ -134,14 +137,15 @@ with st.sidebar:
 
         st.session_state.messages = []
         st.session_state.processed_audio = None
+        st.session_state.uploaded_image_hash = None
 
         st.rerun()
 
     st.divider()
 
-    # -----------------------------------------------------
+    # --------------------------------------------------
     # ABOUT
-    # -----------------------------------------------------
+    # --------------------------------------------------
 
     with st.expander("ℹ️ About"):
 
@@ -151,13 +155,16 @@ with st.sidebar:
 
             An AI-powered chatbot designed to make
             AI interaction more accessible through
-            **text and voice**.
+            **text, voice, and images**.
 
             ### ✨ Features
 
             • Multilingual AI conversation  
             • Text input  
             • Voice input  
+            • Image upload  
+            • Camera capture  
+            • Image understanding  
             • AI-generated responses  
             • Voice output  
             • Conversation memory  
@@ -165,27 +172,27 @@ with st.sidebar:
 
             ### 👨‍💻 Developer
 
-            **Raees Khan**
+            **R@ees Khan**
 
             Assistant Director Technical, NADRA
 
-            This project was developed as an AI
-            application demonstrating practical use
+            This project demonstrates practical use
             of Generative AI, multilingual interaction,
-            and voice-enabled communication.
+            voice-enabled communication, and
+            multimodal AI.
 
             ### 🎯 Purpose
 
             To demonstrate how modern AI can provide
             a simple and accessible conversational
-            interface for users communicating in
-            different languages.
+            interface for users communicating through
+            text, voice, and images.
             """
         )
 
-    # -----------------------------------------------------
+    # --------------------------------------------------
     # FEEDBACK
-    # -----------------------------------------------------
+    # --------------------------------------------------
 
     with st.expander("💬 Feedback"):
 
@@ -195,13 +202,7 @@ with st.sidebar:
 
         rating = st.select_slider(
             "How would you rate your experience?",
-            options=[
-                1,
-                2,
-                3,
-                4,
-                5
-            ],
+            options=[1, 2, 3, 4, 5],
             value=5
         )
 
@@ -236,26 +237,19 @@ with st.sidebar:
 
     st.divider()
 
-    st.caption(
-        "Powered by Google Gemini"
-    )
+    st.caption("Powered by Google Gemini")
 
 
-# =========================================================
-# DISPLAY PREVIOUS MESSAGES
-# =========================================================
+# --------------------------------------------------
+# DISPLAY CHAT HISTORY
+# --------------------------------------------------
 
 for msg in st.session_state.messages:
 
-    with st.chat_message(
-        msg["role"]
-    ):
+    with st.chat_message(msg["role"]):
 
-        st.write(
-            msg["content"]
-        )
+        st.write(msg["content"])
 
-        # Play saved voice response if available
         if (
             msg["role"] == "assistant"
             and "audio" in msg
@@ -268,9 +262,9 @@ for msg in st.session_state.messages:
             )
 
 
-# =========================================================
+# --------------------------------------------------
 # TEXT TO SPEECH
-# =========================================================
+# --------------------------------------------------
 
 tts_languages = {
     "English": "en",
@@ -282,14 +276,9 @@ tts_languages = {
 }
 
 
-def generate_voice(
-    text,
-    language
-):
+def generate_voice(text, language):
 
-    language_code = tts_languages.get(
-        language
-    )
+    language_code = tts_languages.get(language)
 
     if not language_code:
         return None
@@ -307,20 +296,16 @@ def generate_voice(
         slow=False
     )
 
-    tts.save(
-        temp_file.name
-    )
+    tts.save(temp_file.name)
 
     return temp_file.name
 
 
-# =========================================================
-# GEMINI TEXT RESPONSE
-# =========================================================
+# --------------------------------------------------
+# GEMINI TEXT FUNCTION
+# --------------------------------------------------
 
-def ask_gemini(
-    prompt
-):
+def ask_gemini(prompt):
 
     response = client.models.generate_content(
         model="gemini-3.5-flash",
@@ -330,9 +315,9 @@ def ask_gemini(
     return response.text
 
 
-# =========================================================
-# BUILD CONVERSATION HISTORY
-# =========================================================
+# --------------------------------------------------
+# CONVERSATION HISTORY
+# --------------------------------------------------
 
 def build_conversation():
 
@@ -348,9 +333,285 @@ def build_conversation():
     return conversation
 
 
-# =========================================================
+# --------------------------------------------------
+# IMAGE & CAMERA
+# --------------------------------------------------
+
+st.markdown(
+    '<div class="section-title">🖼️ Image & Camera</div>',
+    unsafe_allow_html=True
+)
+
+image_tab1, image_tab2 = st.tabs(
+    [
+        "🖼️ Upload Image",
+        "📷 Take Photo"
+    ]
+)
+
+
+# --------------------------------------------------
+# IMAGE UPLOAD
+# --------------------------------------------------
+
+uploaded_image = None
+
+with image_tab1:
+
+    uploaded_image = st.file_uploader(
+        "Choose an image",
+        type=[
+            "jpg",
+            "jpeg",
+            "png",
+            "webp"
+        ],
+        help="Upload an image for Gemini to analyze."
+    )
+
+
+# --------------------------------------------------
+# CAMERA
+# --------------------------------------------------
+
+camera_image = None
+
+with image_tab2:
+
+    camera_image = st.camera_input(
+        "Take a photo"
+    )
+
+
+# --------------------------------------------------
+# SELECT IMAGE
+# --------------------------------------------------
+
+selected_image = None
+
+if camera_image is not None:
+
+    selected_image = camera_image
+
+elif uploaded_image is not None:
+
+    selected_image = uploaded_image
+
+
+# --------------------------------------------------
+# DISPLAY IMAGE
+# --------------------------------------------------
+
+if selected_image is not None:
+
+    st.image(
+        selected_image,
+        caption="Selected image",
+        use_container_width=True
+    )
+
+
+# --------------------------------------------------
+# IMAGE QUESTION
+# --------------------------------------------------
+
+if selected_image is not None:
+
+    image_question = st.text_input(
+        "💬 What would you like me to do with this image?",
+        placeholder=(
+            "Example: Describe this image, "
+            "read the text, or explain what you see."
+        ),
+        key="image_question"
+    )
+
+    analyze_image = st.button(
+        "🔍 Analyze Image",
+        use_container_width=True
+    )
+
+    if analyze_image:
+
+        image_bytes = selected_image.getvalue()
+
+        image_hash = hashlib.md5(
+            image_bytes
+        ).hexdigest()
+
+        if (
+            image_hash
+            == st.session_state.uploaded_image_hash
+        ):
+
+            st.info(
+                "This image has already been analyzed."
+            )
+
+        else:
+
+            st.session_state.uploaded_image_hash = image_hash
+
+            if not image_question.strip():
+
+                image_question = (
+                    "Describe this image and explain "
+                    "the important information visible in it."
+                )
+
+            try:
+
+                image_path = tempfile.NamedTemporaryFile(
+                    delete=False,
+                    suffix=".jpg"
+                ).name
+
+                with open(
+                    image_path,
+                    "wb"
+                ) as f:
+
+                    f.write(image_bytes)
+
+                uploaded_file = client.files.upload(
+                    file=image_path
+                )
+
+                conversation = build_conversation()
+
+                image_prompt = f"""
+You are a helpful multilingual AI assistant.
+
+The user has provided an image.
+
+Analyze the image carefully and answer the
+user's question.
+
+Respond naturally, clearly, and accurately
+in {language}.
+
+If the image contains text, read and explain
+the text when relevant.
+
+If the image contains an object, document,
+diagram, scene, screenshot, or other visual
+information, explain what is visible.
+
+Do not claim to see information that is not
+actually visible in the image.
+
+Keep the response concise unless the user asks
+for a detailed explanation.
+
+Conversation history:
+
+{conversation}
+
+User's image question:
+
+{image_question}
+
+Answer the user's question about the image.
+"""
+
+                with st.chat_message("user"):
+
+                    st.write(
+                        f"🖼️ Image: {image_question}"
+                    )
+
+                with st.chat_message("assistant"):
+
+                    with st.spinner(
+                        "🖼️ Analyzing image..."
+                    ):
+
+                        response = client.models.generate_content(
+                            model="gemini-3.5-flash",
+                            contents=[
+                                image_prompt,
+                                uploaded_file
+                            ]
+                        )
+
+                    answer = response.text
+
+                    if not answer:
+
+                        st.error(
+                            "Gemini analyzed the image "
+                            "but returned no answer."
+                        )
+
+                        st.stop()
+
+                    st.write(answer)
+
+                    audio_output = None
+
+                    try:
+
+                        audio_file = generate_voice(
+                            answer,
+                            language
+                        )
+
+                        if audio_file:
+
+                            with open(
+                                audio_file,
+                                "rb"
+                            ) as f:
+
+                                audio_output = f.read()
+
+                            st.audio(
+                                audio_output,
+                                format="audio/mp3"
+                            )
+
+                        else:
+
+                            st.caption(
+                                "🔊 Voice output is not "
+                                "currently available for this language."
+                            )
+
+                    except Exception as voice_error:
+
+                        st.caption(
+                            f"🔊 Voice output unavailable: "
+                            f"{voice_error}"
+                        )
+
+                st.session_state.messages.append(
+                    {
+                        "role": "user",
+                        "content": (
+                            f"🖼️ Image: "
+                            f"{image_question}"
+                        )
+                    }
+                )
+
+                st.session_state.messages.append(
+                    {
+                        "role": "assistant",
+                        "content": answer,
+                        "audio": audio_output
+                    }
+                )
+
+            except Exception as e:
+
+                st.error(
+                    f"Image/Gemini error: {e}"
+                )
+
+
+# --------------------------------------------------
 # CHAT INPUT
-# =========================================================
+# --------------------------------------------------
 
 chat_input = st.chat_input(
     "Type a message or tap 🎤 to speak...",
@@ -360,18 +621,20 @@ chat_input = st.chat_input(
 )
 
 
-# =========================================================
-# PROCESS CHAT INPUT
-# =========================================================
+# --------------------------------------------------
+# TEXT OR VOICE PROCESSING
+# --------------------------------------------------
 
 if chat_input:
 
     text_message = chat_input.text
+
     audio_message = chat_input.audio
 
-    # -----------------------------------------------------
+
+    # --------------------------------------------------
     # TEXT MESSAGE
-    # -----------------------------------------------------
+    # --------------------------------------------------
 
     if text_message:
 
@@ -379,7 +642,6 @@ if chat_input:
 
         if user_text:
 
-            # Save user message
             st.session_state.messages.append(
                 {
                     "role": "user",
@@ -387,12 +649,9 @@ if chat_input:
                 }
             )
 
-            # Display user message
             with st.chat_message("user"):
 
-                st.write(
-                    user_text
-                )
+                st.write(user_text)
 
             conversation = build_conversation()
 
@@ -417,31 +676,24 @@ Answer the user's latest message.
 
             try:
 
-                with st.chat_message(
-                    "assistant"
-                ):
+                with st.chat_message("assistant"):
 
                     with st.spinner(
                         "🤖 Thinking..."
                     ):
 
-                        answer = ask_gemini(
-                            prompt
-                        )
+                        answer = ask_gemini(prompt)
 
-                    st.write(
-                        answer
-                    )
+                    st.write(answer)
 
-                    # Voice output
+                    audio_bytes = None
+
                     try:
 
                         audio_file = generate_voice(
                             answer,
                             language
                         )
-
-                        audio_bytes = None
 
                         if audio_file:
 
@@ -471,8 +723,6 @@ Answer the user's latest message.
                             f"{voice_error}"
                         )
 
-
-                # Save assistant response
                 st.session_state.messages.append(
                     {
                         "role": "assistant",
@@ -488,20 +738,18 @@ Answer the user's latest message.
                 )
 
 
-    # -----------------------------------------------------
+    # --------------------------------------------------
     # VOICE MESSAGE
-    # -----------------------------------------------------
+    # --------------------------------------------------
 
     elif audio_message:
 
-        # Create unique fingerprint
         audio_bytes = audio_message.getvalue()
 
         audio_hash = hashlib.md5(
             audio_bytes
         ).hexdigest()
 
-        # Prevent duplicate processing
         if (
             audio_hash
             == st.session_state.processed_audio
@@ -513,7 +761,6 @@ Answer the user's latest message.
 
         try:
 
-            # Save temporary audio
             audio_path = "/tmp/user_voice.wav"
 
             with open(
@@ -521,21 +768,14 @@ Answer the user's latest message.
                 "wb"
             ) as f:
 
-                f.write(
-                    audio_bytes
-                )
+                f.write(audio_bytes)
 
-
-            # Upload audio to Gemini
             uploaded_audio = client.files.upload(
                 file=audio_path
             )
 
-
             conversation = build_conversation()
 
-
-            # Direct audio understanding
             prompt = f"""
 You are a helpful multilingual AI assistant.
 
@@ -551,6 +791,7 @@ Keep the response concise unless the user
 asks for a detailed explanation.
 
 Do not describe the audio.
+
 Do not explain your processing.
 
 Conversation history:
@@ -560,19 +801,13 @@ Conversation history:
 Answer the user's voice message.
 """
 
-
-            with st.chat_message(
-                "user"
-            ):
+            with st.chat_message("user"):
 
                 st.write(
                     "🎤 Voice message"
                 )
 
-
-            with st.chat_message(
-                "assistant"
-            ):
+            with st.chat_message("assistant"):
 
                 with st.spinner(
                     "🎤 Understanding and thinking..."
@@ -586,9 +821,7 @@ Answer the user's voice message.
                         ]
                     )
 
-
                 answer = response.text
-
 
                 if not answer:
 
@@ -599,13 +832,8 @@ Answer the user's voice message.
 
                     st.stop()
 
+                st.write(answer)
 
-                st.write(
-                    answer
-                )
-
-
-                # Voice output
                 audio_output = None
 
                 try:
@@ -623,7 +851,6 @@ Answer the user's voice message.
                         ) as f:
 
                             audio_output = f.read()
-
 
                         st.audio(
                             audio_output,
@@ -644,8 +871,6 @@ Answer the user's voice message.
                         f"{voice_error}"
                     )
 
-
-            # Save voice interaction
             st.session_state.messages.append(
                 {
                     "role": "user",
@@ -660,7 +885,6 @@ Answer the user's voice message.
                     "audio": audio_output
                 }
             )
-
 
         except Exception as e:
 
