@@ -7,7 +7,7 @@ from gtts import gTTS
 
 
 # -----------------------------
-# Page configuration
+# PAGE SETTINGS
 # -----------------------------
 
 st.set_page_config(
@@ -15,20 +15,31 @@ st.set_page_config(
     page_icon="🌍"
 )
 
+
+# -----------------------------
+# TITLE
+# -----------------------------
+
 st.title("🌍 Multilingual AI Chatbot")
-st.caption("Chat with AI using text or voice in multiple languages.")
+
+st.caption(
+    "Chat with AI using text or voice in multiple languages."
+)
 
 
 # -----------------------------
-# Gemini setup
+# GEMINI CLIENT
 # -----------------------------
 
 api_key = os.environ["GEMINI_API_KEY"]
-client = genai.Client(api_key=api_key)
+
+client = genai.Client(
+    api_key=api_key
+)
 
 
 # -----------------------------
-# Session memory
+# CHAT MEMORY
 # -----------------------------
 
 if "messages" not in st.session_state:
@@ -36,7 +47,7 @@ if "messages" not in st.session_state:
 
 
 # -----------------------------
-# Language selection
+# LANGUAGE SELECTION
 # -----------------------------
 
 language = st.selectbox(
@@ -54,31 +65,36 @@ language = st.selectbox(
 
 
 # -----------------------------
-# Show chat history
+# DISPLAY CHAT HISTORY
 # -----------------------------
 
 for msg in st.session_state.messages:
 
     with st.chat_message(msg["role"]):
+
         st.write(msg["content"])
 
 
 # -----------------------------
-# Text input
+# TEXT INPUT
 # -----------------------------
 
-message = st.chat_input("Type your message...")
-
-
-# -----------------------------
-# Voice input
-# -----------------------------
-
-audio = st.audio_input("🎤 Or record your message")
+message = st.chat_input(
+    "Type your message..."
+)
 
 
 # -----------------------------
-# Text-to-speech languages
+# VOICE INPUT
+# -----------------------------
+
+audio = st.audio_input(
+    "🎤 Or record your message"
+)
+
+
+# -----------------------------
+# TEXT TO SPEECH LANGUAGES
 # -----------------------------
 
 tts_languages = {
@@ -92,7 +108,7 @@ tts_languages = {
 
 
 # -----------------------------
-# Generate voice
+# TEXT TO SPEECH FUNCTION
 # -----------------------------
 
 def generate_voice(text, language):
@@ -115,42 +131,25 @@ def generate_voice(text, language):
         slow=False
     )
 
-    tts.save(temp_file.name)
+    tts.save(
+        temp_file.name
+    )
 
     return temp_file.name
 
 
 # -----------------------------
-# Ask Gemini
+# GEMINI TEXT FUNCTION
 # -----------------------------
 
-import time
+def ask_gemini(prompt):
 
+    response = client.models.generate_content(
+        model="gemini-3.7-flash",
+        contents=prompt
+    )
 
-def ask_gemini(contents):
-
-    for attempt in range(3):
-
-        try:
-
-            response = client.models.generate_content(
-                model="gemini-3.6-flash",
-                contents=contents
-            )
-
-            return response.text
-
-        except Exception as e:
-
-            error_message = str(e)
-
-            if "503" in error_message or "UNAVAILABLE" in error_message:
-
-                if attempt < 2:
-                    time.sleep(2)
-                    continue
-
-            raise e
+    return response.text
 
 
 # -----------------------------
@@ -159,6 +158,7 @@ def ask_gemini(contents):
 
 if message:
 
+    # Save user message
     st.session_state.messages.append(
         {
             "role": "user",
@@ -166,9 +166,13 @@ if message:
         }
     )
 
+    # Display user message
     with st.chat_message("user"):
+
         st.write(message)
 
+
+    # Build conversation history
     conversation = ""
 
     for msg in st.session_state.messages:
@@ -177,6 +181,8 @@ if message:
             f'{msg["role"]}: {msg["content"]}\n'
         )
 
+
+    # Create AI prompt
     prompt = f"""
 You are a helpful multilingual AI assistant.
 
@@ -186,15 +192,21 @@ Use the conversation history to understand
 the user's current question.
 
 Conversation history:
+
 {conversation}
 
 Answer the user's latest message.
 """
 
+
     try:
 
-        answer = ask_gemini(prompt)
+        answer = ask_gemini(
+            prompt
+        )
 
+
+        # Save AI answer
         st.session_state.messages.append(
             {
                 "role": "assistant",
@@ -202,12 +214,18 @@ Answer the user's latest message.
             }
         )
 
+
+        # Display AI answer
         with st.chat_message("assistant"):
 
             st.write(answer)
 
-            st.markdown("🔊 **Voice Output**")
+            st.markdown(
+                "🔊 **Voice Output**"
+            )
 
+
+            # Generate voice
             try:
 
                 audio_file = generate_voice(
@@ -215,13 +233,19 @@ Answer the user's latest message.
                     language
                 )
 
-                with open(audio_file, "rb") as f:
+                with open(
+                    audio_file,
+                    "rb"
+                ) as f:
+
                     audio_bytes = f.read()
+
 
                 st.audio(
                     audio_bytes,
                     format="audio/mp3"
                 )
+
 
             except Exception as voice_error:
 
@@ -229,11 +253,13 @@ Answer the user's latest message.
                     f"Voice output unavailable: {voice_error}"
                 )
 
+
     except Exception as e:
 
         st.error(
             f"Gemini error: {e}"
         )
+
 
 # -----------------------------
 # VOICE MESSAGE
@@ -243,52 +269,24 @@ if audio:
 
     try:
 
+        # Save audio
         audio_path = "/tmp/voice.wav"
 
-        with open(audio_path, "wb") as f:
-            f.write(audio.getvalue())
+        with open(
+            audio_path,
+            "wb"
+        ) as f:
 
+            f.write(
+                audio.getvalue()
+            )
+
+
+        # Upload audio to Gemini
         uploaded_audio = client.files.upload(
             file=audio_path
         )
 
-        # Transcribe the user's voice
-        transcription_prompt = """
-Transcribe this voice message exactly.
-
-Return only the spoken words.
-Do not translate them.
-Do not add explanations.
-"""
-
-        transcription_response = client.models.generate_content(
-            model="gemini-3.5-transcribe",
-            contents=[
-                transcription_prompt,
-                uploaded_audio
-            ]
-        )
-
-        user_text = transcription_response.text
-
-        if not user_text:
-            st.error(
-                "❌ Speech was received, but no text was returned."
-            )
-            st.stop()
-
-        user_text = user_text.strip()
-
-        # Show the transcribed message
-        st.session_state.messages.append(
-            {
-                "role": "user",
-                "content": user_text
-            }
-        )
-
-        with st.chat_message("user"):
-            st.write(f"🎤 {user_text}")
 
         # Build conversation history
         conversation = ""
@@ -299,20 +297,69 @@ Do not add explanations.
                 f'{msg["role"]}: {msg["content"]}\n'
             )
 
-        # Ask Gemini to answer
+
+        # Ask Gemini to understand the audio
         prompt = f"""
 You are a helpful multilingual AI assistant.
 
+The user has sent a voice message.
+
+First understand what the user said from the audio.
+
+Then answer the user's question or request.
+
 Respond naturally, clearly, and accurately in {language}.
 
+Do not explain that the message was audio.
+
 Conversation history:
+
 {conversation}
 
-Answer the user's latest message.
+Answer the user's voice message.
 """
 
-        answer = ask_gemini(prompt)
 
+        # Gemini processes audio directly
+        response = client.models.generate_content(
+            model="gemini-3.7-flash",
+            contents=[
+                prompt,
+                uploaded_audio
+            ]
+        )
+
+
+        answer = response.text
+
+
+        if not answer:
+
+            st.error(
+                "❌ Gemini received the voice message but returned no answer."
+            )
+
+            st.stop()
+
+
+        # Save user voice message
+        st.session_state.messages.append(
+            {
+                "role": "user",
+                "content": "🎤 Voice message"
+            }
+        )
+
+
+        # Display user voice message
+        with st.chat_message("user"):
+
+            st.write(
+                "🎤 Voice message"
+            )
+
+
+        # Save AI answer
         st.session_state.messages.append(
             {
                 "role": "assistant",
@@ -320,12 +367,18 @@ Answer the user's latest message.
             }
         )
 
+
+        # Display AI answer
         with st.chat_message("assistant"):
 
             st.write(answer)
 
-            st.markdown("🔊 **Voice Output**")
+            st.markdown(
+                "🔊 **Voice Output**"
+            )
 
+
+            # Generate voice output
             try:
 
                 audio_file = generate_voice(
@@ -333,13 +386,19 @@ Answer the user's latest message.
                     language
                 )
 
-                with open(audio_file, "rb") as f:
+                with open(
+                    audio_file,
+                    "rb"
+                ) as f:
+
                     audio_bytes = f.read()
+
 
                 st.audio(
                     audio_bytes,
                     format="audio/mp3"
                 )
+
 
             except Exception as voice_error:
 
@@ -347,8 +406,9 @@ Answer the user's latest message.
                     f"Voice output unavailable: {voice_error}"
                 )
 
+
     except Exception as e:
 
         st.error(
-            f"Voice transcription/Gemini error: {e}"
+            f"Voice/Gemini error: {e}"
         )
