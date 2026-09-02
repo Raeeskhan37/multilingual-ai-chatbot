@@ -395,7 +395,7 @@ def generate_voice(text):
 # =========================================================
 
 chat_input = st.chat_input(
-    "Type a message, attach an image, or tap 🎤 to speak...",
+    "Type, attach 📎, or speak 🎤...", 
     accept_file=True,
     file_type=[
         "jpg",
