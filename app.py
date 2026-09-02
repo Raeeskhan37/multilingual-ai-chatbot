@@ -1,5 +1,4 @@
 import os
-import time
 import streamlit as st
 from google import genai
 
@@ -25,18 +24,13 @@ User message:
 {message}
 """
 
-    for attempt in range(3):
-        try:
-            response = client.models.generate_content(
-                model="gemini-3.6-flash",
-                contents=prompt
-            )
+    try:
+        response = client.models.generate_content(
+            model="gemini-3.6-flash",
+            contents=prompt
+        )
 
-            st.write(response.text)
-            break
+        st.write(response.text)
 
-        except Exception as e:
-            if attempt < 2:
-                time.sleep(2)
-            else:
-                st.error(f"Gemini error: {e}")
+    except Exception as e:
+        st.error(f"Gemini error: {e}")
