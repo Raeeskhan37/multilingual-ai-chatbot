@@ -1,8 +1,9 @@
 import os
-import json
+import tempfile
+
 import streamlit as st
-import streamlit.components.v1 as components
 from google import genai
+from gtts import gTTS
 
 
 # -----------------------------------
@@ -44,142 +45,47 @@ language = st.selectbox(
 
 
 # -----------------------------------
-# Browser Voice Output
+# gTTS Language Codes
 # -----------------------------------
 
-def speak_button(text, language):
-
-    language_codes = {
-        "English": "en-US",
-        "Urdu": "ur-PK",
-        "Pashto": "ps-PK",
-        "Arabic": "ar-SA",
-        "French": "fr-FR",
-        "Spanish": "es-ES",
-        "Chinese": "zh-CN"
-    }
-
-    lang_code = language_codes.get(language, "en-US")
-
-    # Convert Python text into safe JavaScript text
-    text_json = json.dumps(text, ensure_ascii=False)
-    lang_json = json.dumps(lang_code)
-
-    components.html(
-        f"""
-        <!DOCTYPE html>
-
-        <html>
-
-        <head>
-
-        <meta charset="UTF-8">
-
-        <style>
-
-        button {{
-            background-color: #f0f2f6;
-            border: 1px solid #999;
-            border-radius: 8px;
-            padding: 10px 18px;
-            font-size: 16px;
-            cursor: pointer;
-        }}
-
-        button:active {{
-            transform: scale(0.98);
-        }}
-
-        </style>
-
-        </head>
-
-        <body>
-
-        <button onclick="speakAnswer()">
-            🔊 Speak Answer
-        </button>
-
-        <script>
-
-        const answerText = {text_json};
-
-        const answerLanguage = {lang_json};
+tts_languages = {
+    "English": "en",
+    "Urdu": "ur",
+    "Pashto": "ps",
+    "Arabic": "ar",
+    "French": "fr",
+    "Spanish": "es",
+    "Chinese": "zh-CN"
+}
 
 
-        function speakAnswer() {{
+# -----------------------------------
+# Generate Voice
+# -----------------------------------
 
-            // Check whether browser supports speech
-            if (!("speechSynthesis" in window)) {{
+def generate_voice(text, language):
 
-                alert(
-                    "Speech output is not supported by this browser."
-                );
-
-                return;
-            }}
-
-
-            // Stop any previous speech
-            window.speechSynthesis.cancel();
-
-
-            // Create speech
-            const speech =
-                new SpeechSynthesisUtterance(answerText);
-
-
-            // Set selected language
-            speech.lang = answerLanguage;
-
-
-            // Speech speed
-            speech.rate = 0.9;
-
-
-            // Normal pitch
-            speech.pitch = 1.0;
-
-
-            // Try to find a matching voice
-            const voices =
-                window.speechSynthesis.getVoices();
-
-            const languagePrefix =
-                answerLanguage
-                .split("-")[0]
-                .toLowerCase();
-
-
-            const matchingVoice =
-                voices.find(
-                    voice =>
-                        voice.lang
-                        .toLowerCase()
-                        .startsWith(languagePrefix)
-                );
-
-
-            if (matchingVoice) {{
-
-                speech.voice = matchingVoice;
-
-            }}
-
-
-            // Speak
-            window.speechSynthesis.speak(speech);
-
-        }}
-
-        </script>
-
-        </body>
-
-        </html>
-        """,
-        height=60
+    language_code = tts_languages.get(
+        language,
+        "en"
     )
+
+    temp_file = tempfile.NamedTemporaryFile(
+        delete=False,
+        suffix=".mp3"
+    )
+
+    temp_file.close()
+
+    tts = gTTS(
+        text=text,
+        lang=language_code,
+        slow=False
+    )
+
+    tts.save(temp_file.name)
+
+    return temp_file.name
 
 
 # -----------------------------------
@@ -188,7 +94,6 @@ def speak_button(text, language):
 
 if st.button("Ask AI"):
 
-
     # =================================
     # TEXT INPUT
     # =================================
@@ -196,37 +101,51 @@ if st.button("Ask AI"):
     if message:
 
         prompt = f"""
-Understand the user's message regardless of the language used.
+Understand the user's message regardless
+of the language used.
 
-Answer naturally, clearly, and accurately in {language}.
+Answer naturally, clearly, and accurately
+in {language}.
 
 User message:
 {message}
 """
 
-
         try:
 
             response = client.models.generate_content(
-
                 model="gemini-3.6-flash",
-
                 contents=prompt
-
             )
-
 
             answer = response.text
 
-
-            # Display answer
+            # Display text answer
             st.write(answer)
 
-
-            # Voice output
+            # Generate voice
             st.markdown("### 🔊 Voice Output")
 
-            speak_button(answer, language)
+            try:
+
+                audio_file = generate_voice(
+                    answer,
+                    language
+                )
+
+                with open(audio_file, "rb") as f:
+                    audio_bytes = f.read()
+
+                st.audio(
+                    audio_bytes,
+                    format="audio/mp3"
+                )
+
+            except Exception as voice_error:
+
+                st.error(
+                    f"Voice generation error: {voice_error}"
+                )
 
 
         except Exception as e:
@@ -246,7 +165,6 @@ User message:
 
             audio_path = "/tmp/voice.wav"
 
-
             # Save recorded audio
             with open(audio_path, "wb") as f:
 
@@ -265,33 +183,48 @@ Listen carefully to the user's voice message.
 Understand what the user is saying regardless
 of the language used.
 
-Respond naturally, clearly, and accurately in {language}.
+Respond naturally, clearly, and accurately
+in {language}.
 """
 
 
             response = client.models.generate_content(
-
                 model="gemini-3.6-flash",
-
                 contents=[
                     prompt,
                     uploaded_audio
                 ]
-
             )
 
 
             answer = response.text
 
-
-            # Display answer
+            # Display text answer
             st.write(answer)
 
-
-            # Voice output
+            # Generate voice
             st.markdown("### 🔊 Voice Output")
 
-            speak_button(answer, language)
+            try:
+
+                audio_file = generate_voice(
+                    answer,
+                    language
+                )
+
+                with open(audio_file, "rb") as f:
+                    audio_bytes = f.read()
+
+                st.audio(
+                    audio_bytes,
+                    format="audio/mp3"
+                )
+
+            except Exception as voice_error:
+
+                st.error(
+                    f"Voice generation error: {voice_error}"
+                )
 
 
         except Exception as e:
