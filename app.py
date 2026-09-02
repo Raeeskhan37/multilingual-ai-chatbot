@@ -316,3 +316,11 @@ Previous conversation:
         st.error(
             f"Voice/Gemini error: {e}"
         )
+st.subheader("🔎 Available Gemini Models")
+
+try:
+    for model in client.models.list():
+        if "generateContent" in str(model.supported_actions):
+            st.write(model.name)
+except Exception as e:
+    st.error(f"Model list error: {e}")
